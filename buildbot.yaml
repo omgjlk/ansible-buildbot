@@ -178,3 +178,14 @@
     - name: start buildslave
       command: buildslave start ${buildbot_home}/flake8
       when: pgrep.rc > 0
+
+- name: Report
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: debug report access URL
+      debug: msg="Log in at http://${hostvars.master.ansible_ssh_host}:8010"
+    - name: write access url to file
+      shell: echo "Log in at http://${hostvars.master.ansible_ssh_host}:8010" > output
