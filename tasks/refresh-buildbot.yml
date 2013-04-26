@@ -1,0 +1,11 @@
+---
+- name: check for buildbot process
+  command: pgrep -fc "buildbot start ${master_home}"
+  ignore_errors: yes
+  register: pgrep
+- name: start buildbot master
+  command: buildbot start ${master_home}
+  when: pgrep.rc > 0
+- name: reconfigure buildbot
+  command: buildbot reconfig ${master_home}
+  when: pgrep.rc == 0

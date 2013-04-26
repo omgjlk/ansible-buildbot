@@ -64,3 +64,66 @@
       action: add_host hostname=slave
               ansible_ssh_host=${slave.instances[0].accessIPv4}
 
+- name: Prep master
+  hosts: master
+  user: root
+  gather_facts: false
+  tags:
+    - remoteconfig
+    - master
+
+  vars_files:
+    - "vars/common.yml"
+
+  tasks:
+    - name: remove firewalld
+      yum: name=firewalld state=absent
+    - name: install packages
+      yum: name=${item} state=latest
+      with_items: master_pkgs
+    - name: create buildbot user
+      user: home=${buildbot_home} name=buildbot state=present system=yes
+    - name: copy firewall config
+      copy: src=files/iptables-master dest=/etc/sysconfig/iptables
+      notify:
+        - restart iptables
+
+  handlers:
+    - name: restart iptables
+      service: name=iptables state=restarted
+
+- name: Config / start master
+  hosts: master
+  user: root
+  sudo: yes
+  sudo_user: buildbot
+  gather_facts: false
+  tags:
+    - remoteconfig
+    - master
+
+  vars_files:
+    - "vars/common.yml"
+
+  vars:
+    master_ip: ${inventory_hostname}
+
+  tasks:
+    - name: buildbot create master
+      command: buildbot create-master -r ${buildbot_home}
+               creates=${buildbot_home}/buildbot.tac
+    - name: add master.cfg
+      template: dest=${buildbot_home}/master.cfg src=templates/master.j2
+                owner=buildbot
+      notify:
+        - reconfigure buildbot
+    - name: check for buildbot process
+      command: pgrep -fc "buildbot start ${buildbot_home}"
+      ignore_errors: yes
+      register: pgrep
+    - name: start buildbot master
+      command: buildbot start ${buildbot_home}
+      when: pgrep.rc > 0
+
+  handlers:
+    - include: tasks/refresh-buildbot.yml

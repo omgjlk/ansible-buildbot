@@ -3,3 +3,8 @@ creds: /Users/jkeating/.raxpub
 region: ORD
 image: 89e9ce4a-1261-49c3-8a35-17224411659d
 flavor: 4
+buildbot_home: /opt/buildbot
+master_pkgs:
+  - buildbot-master
+  - git-core
+  - iptables-services
