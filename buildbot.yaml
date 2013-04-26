@@ -1,0 +1,66 @@
+# Set up a 2 host buildbot setup in Rackspace cloud
+#
+
+- name: Boot Instances
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tags:
+    - remoteconfig
+    - boot
+
+  vars_files:
+    - "vars/common.yml"
+
+# Do it once to get all of them launched without waiting, then do it again to
+# actually wait and register
+  tasks:
+    - name: launch master nowait
+      action:
+          module: rax
+          creds_file: ${creds}
+          region: ${region}
+          name: buildbot-master.j2solutions.net
+          image: ${image}
+          flavor: ${flavor}
+          files: /root/.ssh/authorized_keys=/Users/jkeating/.ssh/authorized_keys
+          wait: false
+    - name: launch slave nowait
+      action:
+          module: rax
+          creds_file: ${creds}
+          region: ${region}
+          name: buildbot-slave.j2solutions.net
+          image: ${image}
+          flavor: ${flavor}
+          files: /root/.ssh/authorized_keys=/Users/jkeating/.ssh/authorized_keys
+          wait: false
+    - name: wait for master
+      action:
+          module: rax
+          creds_file: ${creds}
+          region: ${region}
+          name: buildbot-master.j2solutions.net
+          image: ${image}
+          flavor: ${flavor}
+          files: /root/.ssh/authorized_keys=/Users/jkeating/.ssh/authorized_keys
+          wait: true
+      register: master
+    - name: wait for slave
+      action:
+          module: rax
+          creds_file: ${creds}
+          region: ${region}
+          name: buildbot-slave.j2solutions.net
+          image: ${image}
+          flavor: ${flavor}
+          files: /root/.ssh/authorized_keys=/Users/jkeating/.ssh/authorized_keys
+          wait: true
+      register: slave
+    - name: register master
+      action: add_host hostname=master
+              ansible_ssh_host=${master.instances[0].accessIPv4}
+    - name: register slave
+      action: add_host hostname=slave
+              ansible_ssh_host=${slave.instances[0].accessIPv4}
+
