@@ -127,3 +127,54 @@
 
   handlers:
     - include: tasks/refresh-buildbot.yml
+
+- name: Prep slave
+  hosts: slave
+  user: root
+  gather_facts: false
+  tags:
+    - remoteconfig
+    - slave
+
+  vars_files:
+    - "vars/common.yml"
+
+  tasks:
+    - name: remove firewalld
+      yum: name=firewalld state=absent
+    - name: install packages
+      yum: name=${item} state=latest
+      with_items: slave_pkgs
+    - name: pip install flake8
+      pip: name=flake8 state=latest
+    - name: create buildbot user
+      user: home=${buildbot_home} name=buildbot state=present system=yes
+
+- name: Config / start slave
+  hosts: slave
+  user: root
+  sudo: yes
+  sudo_user: buildbot
+  gather_facts: false
+  tags:
+    - remoteconfig
+    - slave
+
+  vars_files:
+    - "vars/common.yml"
+
+  tasks:
+    - name: create flake8 dir
+      file: path=${buildbot_home}/flake8 state=directory
+    - name: buildbot create slave
+      command: buildslave create-slave ${buildbot_home}/flake8
+               ${hostvars.master.ansible_ssh_host}:9989
+               flake8 flake8pass
+               creates=${buildbot_home}/flake8/buildbot.tac
+    - name: check for buildslave process
+      command: pgrep -fc "buildslave start ${buildbot_home}/flake8"
+      ignore_errors: yes
+      register: pgrep
+    - name: start buildslave
+      command: buildslave start ${buildbot_home}/flake8
+      when: pgrep.rc > 0

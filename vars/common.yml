@@ -8,3 +8,8 @@ master_pkgs:
   - buildbot-master
   - git-core
   - iptables-services
+slave_pkgs:
+  - buildbot-slave
+  - git-core
+  - python-pip
+  - iptables-services
